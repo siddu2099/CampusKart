@@ -248,12 +248,6 @@ ADMIN_PASSWORD
 
 ---
 
-## 📸 Screenshots
-
-(Add screenshots of login page, seller dashboard, cart, admin analytics here)
-
----
-
 ## 📄 License
 
 This project is for educational purposes.
