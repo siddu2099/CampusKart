@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import './Chatbot.css';
 
 const Chatbot = () => {
@@ -31,7 +31,8 @@ const Chatbot = () => {
         setIsLoading(true);
 
         try {
-            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/chat`, {
+            // The custom api instance automatically handles the base URL
+            const response = await api.post('/chat', {
                 message: userMessage
             });
 

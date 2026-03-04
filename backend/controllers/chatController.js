@@ -26,7 +26,7 @@ Reply to the following user message: ${message}`;
 
         res.status(200).json({ reply: responseText });
     } catch (error) {
-        console.error('Error in chat processing:', error);
+        console.error('Gemini API Error:', error.message, error.stack);
         res.status(500).json({ error: 'Failed to process chat message' });
     }
 };

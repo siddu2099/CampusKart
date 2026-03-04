@@ -5,7 +5,7 @@ const api = axios.create({
     baseURL: `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`,
 });
 
-// Add a request interceptor to automatically attach the JWT token if presents
+// Add a request interceptor to automatically attach the JWT token if present
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
