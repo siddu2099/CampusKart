@@ -1,0 +1,6 @@
+git add .gitignore
+# We add the gitignore file to stage it
+git commit -m "Stop tracking .env file"
+# We save the commit
+git push
+# We push the fix to GitHub
