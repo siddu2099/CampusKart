@@ -7,6 +7,7 @@ const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const cartRoutes = require('./routes/cartRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const User = require('./models/User');
 const bcrypt = require('bcrypt');
 
@@ -31,6 +32,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cart', cartRoutes);
+app.use('/api/chat', chatRoutes);
 
 app.get('/', (req, res) => res.send('CampusKart API Running'));
 

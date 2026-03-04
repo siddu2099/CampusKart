@@ -9,6 +9,7 @@ import Cart from './pages/Cart';
 import OrderSuccess from './pages/OrderSuccess';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
+import Chatbot from './components/Chatbot';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
             <Route path="/cart" element={<Cart />} />
             <Route path="/order-success" element={<OrderSuccess />} />
           </Routes>
+          <Chatbot />
         </div>
       </AuthProvider>
     </Router>
