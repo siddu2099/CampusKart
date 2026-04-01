@@ -24,44 +24,45 @@ exports.placeOrder = async (req, res) => {
     session.startTransaction();
 
     try {
-        const { shippingAddress } = req.body;
+        const { shippingAddress, products: directProducts } = req.body;
         let totalAmount = 0;
         const orderItems = [];
+        let itemsToProcess = [];
+        let cart = null;
 
-        // Fetch user's cart
-        const cart = await Cart.findOne({ user: req.user.id }).session(session);
-
-        if (!cart || cart.items.length === 0) {
-            throw new Error('Your cart is empty');
+        // If directProducts is provided (Direct Buy), use it. Otherwise, use Cart.
+        if (directProducts && directProducts.length > 0) {
+            itemsToProcess = directProducts;
+        } else {
+            // Fetch user's cart
+            cart = await Cart.findOne({ user: req.user.id }).session(session);
+            if (!cart || cart.items.length === 0) {
+                throw new Error('Your cart is empty');
+            }
+            itemsToProcess = cart.items;
         }
 
-        // Iterate through the cart items
-        for (let item of cart.items) {
-            // Find the product within the active transaction session
-            // This locks the document or ensures consistent reads during the transaction
-            const product = await Product.findById(item.product).session(session);
+        // Iterate through the items to process (either direct or from cart)
+        for (let item of itemsToProcess) {
+            // Atomically deduct stock only if sufficient quantity exists.
+            // The condition { stockQuantity: { $gte: item.quantity } } acts as a guard —
+            // if stock is insufficient, findOneAndUpdate returns null and we abort.
+            const updatedProduct = await Product.findOneAndUpdate(
+                { _id: item.product, stockQuantity: { $gte: item.quantity } },
+                { $inc: { stockQuantity: -item.quantity } },
+                { session, new: true }
+            );
 
-            if (!product) {
-                throw new Error(`Product not found: ${item.product}`);
+            if (!updatedProduct) {
+                // Either product not found or insufficient stock — abort entire transaction
+                throw new Error(`Insufficient stock or product not found for ID: ${item.product}`);
             }
 
-            // Check if enough stock is available
-            if (product.stockQuantity < item.quantity) {
-                throw new Error(`Insufficient stock for product: ${product.name}`);
-            }
-
-            // Decrement the stock quantity atomically
-            product.stockQuantity -= item.quantity;
-
-            // Save the updated product back to the database within the session
-            await product.save({ session });
-
-            // Calculate the item total based on the current price
-            const itemPrice = product.price;
+            const itemPrice = updatedProduct.price;
             totalAmount += itemPrice * item.quantity;
 
             orderItems.push({
-                product: product._id,
+                product: updatedProduct._id,
                 quantity: item.quantity,
                 priceAtPurchase: itemPrice
             });
@@ -78,9 +79,11 @@ exports.placeOrder = async (req, res) => {
         // Save the order to the database within the session
         await order.save({ session });
 
-        // Clear the user's cart within the session
-        cart.items = [];
-        await cart.save({ session });
+        // Clear the user's cart within the session ONLY if we used the cart
+        if (cart) {
+            cart.items = [];
+            await cart.save({ session });
+        }
 
         // Commit the transaction - saving all changes (stock deductions + order creation) atomically
         await session.commitTransaction();

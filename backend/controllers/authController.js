@@ -22,8 +22,14 @@ exports.register = async (req, res) => {
         // Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-        // Save OTP
-        const otpEntry = new Otp({ email, otp });
+        // Hash OTP before storing — never save plain text secrets
+        const salt = await bcrypt.genSalt(10);
+        const hashedOtp = await bcrypt.hash(otp, salt);
+
+        // Remove any existing OTP for this email before creating a new one
+        await Otp.deleteMany({ email });
+
+        const otpEntry = new Otp({ email, otp: hashedOtp });
         await otpEntry.save();
 
         // Send OTP via email
@@ -54,10 +60,26 @@ exports.verifyRegistration = async (req, res) => {
     try {
         const { name, email, password, role, otp } = req.body;
 
-        // Find the OTP entry
-        const otpEntry = await Otp.findOne({ email, otp });
+        // Find the OTP entry by email only (we compare hash separately)
+        const otpEntry = await Otp.findOne({ email });
         if (!otpEntry) {
             return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+
+        // Block if too many failed attempts (brute-force protection)
+        if (otpEntry.attempts >= 5) {
+            await Otp.deleteOne({ _id: otpEntry._id });
+            return res.status(429).json({ message: 'Too many failed attempts. Please request a new OTP.' });
+        }
+
+        // Compare submitted OTP against stored bcrypt hash
+        const isMatch = await bcrypt.compare(otp, otpEntry.otp);
+        if (!isMatch) {
+            // Increment failure counter
+            otpEntry.attempts += 1;
+            await otpEntry.save();
+            const remaining = 5 - otpEntry.attempts;
+            return res.status(400).json({ message: `Invalid OTP. ${remaining} attempt(s) remaining.` });
         }
 
         // Hash password
@@ -74,7 +96,7 @@ exports.verifyRegistration = async (req, res) => {
 
         await user.save();
 
-        // Optional: delete the OTP so it can't be reused
+        // Delete the OTP so it cannot be reused
         await Otp.deleteOne({ _id: otpEntry._id });
 
         res.status(201).json({ message: 'User registered successfully' });

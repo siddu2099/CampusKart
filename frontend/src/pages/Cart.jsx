@@ -110,6 +110,7 @@ const Cart = () => {
                                     <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{item.quantity}</span>
                                     <button
                                         onClick={() => updateQuantity(item.product._id, item.quantity + 1)}
+                                        disabled={item.quantity >= item.product.stockQuantity}
                                         style={{ padding: '5px 10px' }}
                                     >
                                         +

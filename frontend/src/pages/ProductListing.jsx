@@ -92,6 +92,7 @@ const ProductListing = () => {
                         <p>{product.description}</p>
                         <p><strong>Price:</strong> ${product.price}</p>
                         <p><strong>Category:</strong> {product.category}</p>
+                        <p><strong>Stock Available:</strong> {product.stockQuantity}</p>
                         <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
                             <button disabled={product.stockQuantity < 1} onClick={() => handleBuy(product)} style={{ flex: 1 }}>
                                 {product.stockQuantity > 0 ? 'Buy Now' : 'Out of Stock'}
@@ -101,7 +102,7 @@ const ProductListing = () => {
                                 onClick={() => handleAddToCart(product)}
                                 style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--primary)' }}
                             >
-                                Add to Cart
+                                {product.stockQuantity > 0 ? 'Add to Cart' : 'Out of Stock'}
                             </button>
                         </div>
                     </div>

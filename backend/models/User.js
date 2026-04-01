@@ -8,7 +8,8 @@ const userSchema = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,  // Creates a unique index — prevents duplicate accounts
+        index: true    // Explicit index for fast login lookups by email
     },
     password: {
         type: String,

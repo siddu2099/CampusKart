@@ -141,3 +141,77 @@ exports.getSellerProducts = async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+// @desc    Get product recommendations using weighted scoring
+// @route   GET /api/products/recommendations?category=X&price=Y
+// @access  Public
+//
+// Scoring formula:
+//   categoryScore  → 0.6 weight (exact category match = full score)
+//   priceScore     → 0.4 weight (proximity within ±30% price range)
+//   totalScore     = (categoryMatch * 0.6) + (priceProximity * 0.4)
+//
+exports.getRecommendations = async (req, res) => {
+    try {
+        const { category, price } = req.query;
+
+        if (!category && !price) {
+            return res.status(400).json({ message: 'Provide at least category or price as a query param' });
+        }
+
+        const referencePrice = price ? Number(price) : null;
+
+        // Build a broad fetch: get all products in the category OR within price range
+        const orConditions = [];
+
+        if (category) {
+            orConditions.push({ category });
+        }
+
+        if (referencePrice) {
+            orConditions.push({
+                price: {
+                    $gte: referencePrice * 0.7,  // -30%
+                    $lte: referencePrice * 1.3   // +30%
+                }
+            });
+        }
+
+        const candidates = await Product.find({ $or: orConditions }).limit(50);
+
+        // Score each candidate
+        const scored = candidates.map((product) => {
+            let score = 0;
+
+            // Category signal — weight 0.6
+            if (category && product.category === category) {
+                score += 0.6;
+            }
+
+            // Price proximity signal — weight 0.4
+            // Score is proportional to how close the product price is to the reference
+            if (referencePrice && referencePrice > 0) {
+                const priceDiff = Math.abs(product.price - referencePrice) / referencePrice;
+                // priceDiff = 0 → full score; priceDiff = 0.3 → score = 0
+                const priceProximity = Math.max(0, 1 - priceDiff / 0.3);
+                score += priceProximity * 0.4;
+            }
+
+            return { product, score };
+        });
+
+        // Sort by score descending, return top 5
+        const top5 = scored
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5)
+            .map(({ product, score }) => ({
+                ...product.toObject(),
+                recommendationScore: parseFloat(score.toFixed(2))
+            }));
+
+        res.json({ success: true, count: top5.length, data: top5 });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+

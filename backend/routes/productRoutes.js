@@ -5,12 +5,14 @@ const {
     updateProduct,
     deleteProduct,
     getProducts,
-    getSellerProducts
+    getSellerProducts,
+    getRecommendations
 } = require('../controllers/productController');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
-// Public route to fetch products
+// Public routes
 router.get('/', getProducts);
+router.get('/recommendations', getRecommendations); // Weighted scoring: ?category=X&price=Y
 
 // Protected routes (Seller/Admin only)
 router.get('/seller/me', verifyToken, checkRole(['Seller']), getSellerProducts);
@@ -19,3 +21,4 @@ router.put('/:id', verifyToken, checkRole(['Seller', 'Admin']), updateProduct);
 router.delete('/:id', verifyToken, checkRole(['Seller', 'Admin']), deleteProduct);
 
 module.exports = router;
+
